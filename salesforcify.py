@@ -50,7 +50,8 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS SMI_DETAILS(
 	install_date date,
 	supply_date date,
 	tariff varchar(25),
-	export_control int check(export_control in (0,1))
+	export_control int check(export_control in (0,1)),
+	site_type varchar(8)
 	)""")
 
 cursor.execute("""CREATE TABLE IF NOT EXISTS FORECAST(
@@ -240,6 +241,15 @@ for row in range(1, num_rows):
 	ECS = results["ECS"]
 	installer = results["installer"]
 	PVsize = results["PVsize"]
+	if PVsize:
+		if (int(PVsize) < 100 or int(PVsize) > 10):
+			site_type = "SME"
+		elif int(PVsize) < 10:
+			site_type = "Resi"
+		elif int(PVsize) > 100:
+			site_type = "C&I"
+	else:
+		site_type = ''
 	panel_brand = results["panel_brand"]
 	address = results["address"]
 	state = results["state"]
@@ -265,6 +275,8 @@ for row in range(1, num_rows):
 	else:
 		export_control = 0
 	tariff = results["tariff"]
+	if tariff:
+		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
 
 	for key, value in results.items():
 		if isinstance(key, int):
@@ -277,9 +289,9 @@ for row in range(1, num_rows):
 
 	cursor.execute("""INSERT OR IGNORE into SMI_DETAILS(SMI, ref_no, ECS, installer, 
 			PVsize, panel_brand, address, postcode, state, site_status, install_date, 
-			supply_date, tariff, export_control) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+			supply_date, tariff, export_control, site_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
 			(SMI, ref_no, ECS, installer, PVsize, panel_brand, address, postcode, state, 
-				site_status, install_date, supply_date, tariff, export_control))
+				site_status, install_date, supply_date, tariff, export_control, site_type))
 
 connection.commit()
 connection.close()

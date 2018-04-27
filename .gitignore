@@ -1,0 +1,11 @@
+# ignore csv files
+*.csv
+
+# ignore xlsx files
+*.xlsx
+
+# ignore db files
+*.db
+
+# ignore Encompass folder
+encompass\ reports/*

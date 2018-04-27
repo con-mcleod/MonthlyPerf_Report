@@ -73,9 +73,12 @@ def get_all_months():
 # return SMI details from SF
 def get_SMI_details(SMI):
 	query = """SELECT ref_no, state, installer, PVsize, export_control,
-		panel_brand, site_status, supply_date from SMI_DETAILS where SMI=?"""
+		panel_brand, site_type, site_status, supply_date, tariff from SMI_DETAILS where SMI=?"""
 	payload = (SMI)
 	result = dbselect(query, payload)
+	if not result:
+		for i in range(0,22):
+			result.append((''))
 	return result
 
 # return SMI's monthly forecasts
@@ -185,7 +188,7 @@ SMIs = get_all_SMIs()
 dates = get_all_months()
 
 ws_headings = ["SMI","Ref No","State","Installer","System Size","Export Control",
-				"Panel Make","PPA Status","Supply Date","Jan FC","Feb FC", "Mar FC",
+				"Panel Make","System Type","PPA Status","Supply Date","Jan FC","Feb FC", "Mar FC",
 				"Apr FC","May FC","Jun FC","Jul FC","Aug FC","Sep FC","Oct FC",
 				"Nov FC","Dec FC"]
 for date in dates:
@@ -205,9 +208,14 @@ for SMI in SMIs:
 	ws.cell(row=row_count+1, column=1).value = SMI[0]
 	details = get_SMI_details(SMI)
 	if details:
-		for detail in details[0]:
-			ws.cell(row=row_count+1, column=col_count+1).value = detail
-			col_count += 1
+		if details[0]:
+			for detail in details[0]:
+				ws.cell(row=row_count+1, column=col_count+1).value = detail
+				col_count += 1
+		else:
+			for i in range(0,len(details)):
+				ws.cell(row=row_count+1, column=col_count+1).value = ''
+				col_count += 1
 	forecasts = get_SMI_forecast(SMI)
 	ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 	for forecast in forecasts:
