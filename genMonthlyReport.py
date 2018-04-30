@@ -183,20 +183,23 @@ else:
 redFill = PatternFill(start_color='FA5858', end_color='FA5858', fill_type='solid')
 greenFill = PatternFill(start_color='9Afe2e', end_color='9Afe2e', fill_type='solid')
 leftBorder = Border(left=Side(style='thin'))
+rightBorder = Border(right=Side(style='thin'))
 
 SMIs = get_all_SMIs()
 dates = get_all_months()
 
 ws_headings = ["SMI","Ref No","State","Installer","System Size","Export Control",
-				"Panel Make","System Type","PPA Status","Supply Date","Jan FC","Feb FC", "Mar FC",
+				"Panel Make","System Type","PPA Status","Supply Date","Tariff","Jan FC","Feb FC", "Mar FC",
 				"Apr FC","May FC","Jun FC","Jul FC","Aug FC","Sep FC","Oct FC",
 				"Nov FC","Dec FC"]
 for date in dates:
 	date = "gen(" + str(date).strip('()') + ")"
 	ws_headings.append(date)
-ws_headings.extend(["Annaul FC","Annual Gen","Annual Perf","Quarter FC","Quarter Gen",
+ws_headings.extend(["Annual FC","Annual Gen","Annual Perf","Quarter FC","Quarter Gen",
 					"Quater Perf","Month FC","Month Gen","Month Perf","Prev FC",
-					"Prev Gen","Prev Perf","Outage Days"])
+					"Prev Gen","Prev Perf","Outage Days","Annual FC $","Annual Gen $","Shortfall $",
+					"Quarter FC $","Quarter Gen $","Shortfall $","CurrMonth FC $","CurrMonth Gen $",
+					"Shortfall $","PrevMonth FC $","PrevMonth Gen $","Shortfall $"])
 row_count = 1
 for SMI in SMIs:
 	col_count = 0
@@ -280,11 +283,62 @@ for SMI in SMIs:
 				ws.cell(row=row_count+1, column=col_count+1).fill = redFill
 			elif val > 1.2:
 				ws.cell(row=row_count+1, column=col_count+1).fill = greenFill
+			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
 		col_count += 1
 		i += 1
 	off_days = get_off_days(SMI, dates)
-	ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
+	ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
 	ws.cell(row=row_count+1, column=col_count+1).value = off_days
+	if (off_days):
+		if off_days > 0:
+			ws.cell(row=row_count+1, column=col_count+1).fill = redFill
+
+	col_count += 1
+
+	if (details[0]):
+		if details[0][9]:
+			tariff = float(details[0][9])
+			
+			revenues = []
+			for val in annual_perf[:2]:
+				revenue = (val*tariff)/100
+				ws.cell(row=row_count+1, column=col_count+1).value = revenue
+				revenues.append(revenue)
+				col_count += 1
+			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+			col_count += 1
+
+			revenues = []
+			for val in quarter_perf[:2]:
+				revenue = (val*tariff)/100
+				ws.cell(row=row_count+1, column=col_count+1).value = revenue
+				revenues.append(revenue)
+				col_count += 1
+			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+			col_count += 1
+
+			revenues = []
+			for val in month_perf[:2]:
+				revenue = (val*tariff)/100
+				ws.cell(row=row_count+1, column=col_count+1).value = revenue
+				revenues.append(revenue)
+				col_count += 1
+			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+			col_count += 1
+
+			revenues = []
+			for val in last_month_perf[:2]:
+				revenue = (val*tariff)/100
+				ws.cell(row=row_count+1, column=col_count+1).value = revenue
+				revenues.append(revenue)
+				col_count += 1
+			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+			col_count += 1
+
 	row_count += 1 
 
 wb.save(output)
