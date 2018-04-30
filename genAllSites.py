@@ -5,18 +5,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Color, Font, PatternFill, Border, Side
 from datetime import datetime
 
-if (len(sys.argv) != 1):
-	print ("Usage: python3 genAllSites.py")
-	exit(1)
-
 DATABASE = "dataset.db"
 output_day = str(datetime.now().day)
 output_month = str(datetime.now().month)
 output_year = str(datetime.now().year)
-output = output_year + "." + output_month + "." + output_day + ".xlsx"
-
-if (os.path.exists(output)):
-	os.remove(output)
 
 connection = sqlite3.connect(DATABASE)
 cursor = connection.cursor()
@@ -74,6 +66,14 @@ def get_all_SMIs():
 	all_SMIs = dbselect(query, payload)
 	return all_SMIs
 
+def get_last_date():
+	query = """SELECT obs_day, obs_month, obs_year from DAILY_GEN
+			group by obs_day, obs_month, obs_year order by obs_year, obs_month, obs_day"""
+	payload = None
+	all_dates = dbselect(query, payload)
+	last_date = all_dates[-1]
+	return last_date
+
 # return SMI's generation for given month
 def get_month_gen(SMI, date):
 	month = date[0]
@@ -106,6 +106,16 @@ def get_off_days(SMI, dates):
 # GENERATE OUTPUT            #
 #                            #
 ##############################
+
+if (len(sys.argv) != 1):
+	print ("Usage: python3 genAllSites.py")
+	exit(1)
+
+last_date = get_last_date()
+output = str(last_date[2])+"."+str(last_date[1])+"."+str(last_date[0]) + ".xlsx"
+
+if (os.path.exists(output)):
+	os.remove(output)
 
 wb = Workbook()
 ws = wb.active
