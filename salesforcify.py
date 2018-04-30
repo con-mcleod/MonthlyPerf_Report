@@ -277,6 +277,8 @@ for row in range(1, num_rows):
 	tariff = results["tariff"]
 	if tariff:
 		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
+	if (SMI == "6203778594" or SMI=="6203779394"):
+		tariff = 9
 
 	for key, value in results.items():
 		if isinstance(key, int):

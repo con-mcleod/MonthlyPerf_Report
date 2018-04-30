@@ -2,6 +2,7 @@
 
 import sys, sqlite3, os
 from openpyxl import Workbook
+from openpyxl.styles import Color, Font, PatternFill, Border, Side
 from datetime import datetime
 
 if (len(sys.argv) != 1):
@@ -110,6 +111,9 @@ wb = Workbook()
 ws = wb.active
 ws.title = "All_sites"
 
+leftBorder = Border(left=Side(style='thin'))
+rightBorder = Border(right=Side(style='thin'))
+
 dates = get_all_months()
 SMIs = get_all_SMIs()
 
@@ -118,6 +122,8 @@ for SMI in SMIs:
 	col_count = 1
 	ws.cell(row=1, column=1).value = "SMI"
 	ws.cell(row=row_count+1, column=1).value = SMI[0]
+	ws.cell(row=row_count+1, column=1).border = rightBorder
+
 	for date in dates:
 		ws.cell(row=1, column=col_count+1).value = str(date[0]) + "," + str(date[1])
 		month_gen = get_month_gen(SMI[0], date)
@@ -125,6 +131,7 @@ for SMI in SMIs:
 		col_count += 1
 	ws.cell(row=1, column=col_count+1).value = "Outage Days"
 	off_days = get_off_days(SMI, dates)
+	ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 	ws.cell(row=row_count+1, column=col_count+1).value = off_days
 	row_count += 1
 

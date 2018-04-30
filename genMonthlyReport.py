@@ -295,49 +295,50 @@ for SMI in SMIs:
 
 	col_count += 1
 
+	tariff = None
 	if (details[0]):
 		if details[0][9]:
 			tariff = float(details[0][9])
 			
-			revenues = []
-			for val in annual_perf[:2]:
-				revenue = (val*tariff)/100
-				ws.cell(row=row_count+1, column=col_count+1).value = revenue
-				revenues.append(revenue)
-				col_count += 1
-			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
-			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+	if tariff:
+		revenues = []
+		for val in annual_perf[:2]:
+			revenue = (val*tariff)/100
+			ws.cell(row=row_count+1, column=col_count+1).value = revenue
+			revenues.append(revenue)
 			col_count += 1
+		ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+		ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		col_count += 1
 
-			revenues = []
-			for val in quarter_perf[:2]:
-				revenue = (val*tariff)/100
-				ws.cell(row=row_count+1, column=col_count+1).value = revenue
-				revenues.append(revenue)
-				col_count += 1
-			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
-			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		revenues = []
+		for val in quarter_perf[:2]:
+			revenue = (val*tariff)/100
+			ws.cell(row=row_count+1, column=col_count+1).value = revenue
+			revenues.append(revenue)
 			col_count += 1
+		ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+		ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		col_count += 1
 
-			revenues = []
-			for val in month_perf[:2]:
-				revenue = (val*tariff)/100
-				ws.cell(row=row_count+1, column=col_count+1).value = revenue
-				revenues.append(revenue)
-				col_count += 1
-			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
-			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		revenues = []
+		for val in month_perf[:2]:
+			revenue = (val*tariff)/100
+			ws.cell(row=row_count+1, column=col_count+1).value = revenue
+			revenues.append(revenue)
 			col_count += 1
+		ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+		ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		col_count += 1
 
-			revenues = []
-			for val in last_month_perf[:2]:
-				revenue = (val*tariff)/100
-				ws.cell(row=row_count+1, column=col_count+1).value = revenue
-				revenues.append(revenue)
-				col_count += 1
-			ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
-			ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
+		revenues = []
+		for val in last_month_perf[:2]:
+			revenue = (val*tariff)/100
+			ws.cell(row=row_count+1, column=col_count+1).value = revenue
+			revenues.append(revenue)
 			col_count += 1
+		ws.cell(row=row_count+1, column=col_count+1).value = (revenues[1]-revenues[0])
+		ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
 
 	row_count += 1 
 
