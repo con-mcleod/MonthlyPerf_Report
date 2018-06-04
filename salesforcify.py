@@ -237,11 +237,14 @@ for row in range(1, num_rows):
 				results[dval] = val
 
 	SMI = results["SMI"]
+	if isinstance(SMI,str) == False:
+		SMI = str(SMI)[0:10]
 	ref_no = results["ref_no"]
 	ECS = results["ECS"]
 	installer = results["installer"]
 	PVsize = results["PVsize"]
 	if PVsize:
+		PVsize = float(PVsize)
 		if (int(PVsize) < 100 or int(PVsize) > 10):
 			site_type = "SME"
 		elif int(PVsize) < 10:
@@ -276,13 +279,14 @@ for row in range(1, num_rows):
 		export_control = 0
 	tariff = results["tariff"]
 	if tariff:
-		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
+		pass
+		# tariff = re.sub(r'[^0-9\.]','',tariff[5:])
 	if (SMI == "6203778594" or SMI=="6203779394"):
 		tariff = 9
 
 	for key, value in results.items():
 		if isinstance(key, int):
-			value = re.sub(r'[^0-9\.]','',value)
+			# value = re.sub(r'[^0-9\.]','',value)
 			if value == "":
 				value = 0
 			value = float(value)
@@ -313,6 +317,7 @@ SMIs = get_all_SMIs()
 for SMI in SMIs:
 	supply_date = get_supply_date(SMI)
 	if bool(supply_date) and supply_date[0][0] != '':
+		print (SMI)
 		supply_year = int(supply_date[0][0][2:4])
 		supply_month = int(supply_date[0][0][5:7])
 		supply_day = int(supply_date[0][0][8:10])
@@ -320,16 +325,25 @@ for SMI in SMIs:
 			month = date[0]
 			year = date[1]
 			adj_forecast = get_forecast(SMI[0], month)[0][0]
-			if (year < supply_year):
-				adj_forecast = 0
-			elif (supply_year == year):
-				if (supply_month == month):
-					days_in_month = get_days_in_month(month, year)
-					adj_forecast = adj_forecast * (1-(supply_day/days_in_month))
-				elif (month < supply_month):
+			if (SMI[0]=="6203778594" or SMI[0]=="6203779394"):
+				if date[1] == 16:
+					adj_forecast = 0.933*adj_forecast
+				elif date[1] == 17:
+					adj_forecast = 0.926*adj_forecast
+				elif date[1] == 18:
+					adj_forecast = 0.919*adj_forecast
+				
+			else:
+				if (year < supply_year):
 					adj_forecast = 0
-				else:
-					adj_forecast = adj_forecast
+				elif (supply_year == year):
+					if (supply_month == month):
+						days_in_month = get_days_in_month(month, year)
+						adj_forecast = adj_forecast * (1-(supply_day/days_in_month))
+					elif (month < supply_month):
+						adj_forecast = 0
+					else:
+						adj_forecast = adj_forecast
 			
 			cursor.execute("""INSERT OR IGNORE INTO adj_forecast(SMI, month, year, adj_val)
 			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
