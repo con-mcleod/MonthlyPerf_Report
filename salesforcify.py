@@ -245,11 +245,11 @@ for row in range(1, num_rows):
 	PVsize = results["PVsize"]
 	if PVsize:
 		PVsize = float(PVsize)
-		if (int(PVsize) < 100 or int(PVsize) > 10):
+		if (10 < PVsize < 100):
 			site_type = "SME"
-		elif int(PVsize) < 10:
+		elif PVsize < 10:
 			site_type = "Resi"
-		elif int(PVsize) > 100:
+		elif PVsize > 100:
 			site_type = "C&I"
 	else:
 		site_type = ''
@@ -279,8 +279,7 @@ for row in range(1, num_rows):
 		export_control = 0
 	tariff = results["tariff"]
 	if tariff:
-		pass
-		# tariff = re.sub(r'[^0-9\.]','',tariff[5:])
+		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
 	if (SMI == "6203778594" or SMI=="6203779394"):
 		tariff = 9
 
@@ -317,7 +316,6 @@ SMIs = get_all_SMIs()
 for SMI in SMIs:
 	supply_date = get_supply_date(SMI)
 	if bool(supply_date) and supply_date[0][0] != '':
-		print (SMI)
 		supply_year = int(supply_date[0][0][2:4])
 		supply_month = int(supply_date[0][0][5:7])
 		supply_day = int(supply_date[0][0][8:10])
@@ -349,7 +347,13 @@ for SMI in SMIs:
 			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
 
 	else:
-		print (SMI[0], "does not have a supply date apparently")
+		print (SMI[0], "does not have a supply date apparently so forecast remains the same")
+		for date in dates:
+			month = date[0]
+			year = date[1]
+			adj_forecast = get_forecast(SMI[0], month)[0][0]
+			cursor.execute("""INSERT OR IGNORE INTO adj_forecast(SMI, month, year, adj_val)
+			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
 
 connection.commit()
 connection.close()
