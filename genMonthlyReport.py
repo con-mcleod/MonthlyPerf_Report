@@ -91,6 +91,13 @@ def get_SMI_forecast(SMI):
 	result = dbselect(query, payload)
 	return result
 
+# return SMI's monthly forecasts
+def get_SMI_adj_forecast(SMI):
+	query = "SELECT adj_val from ADJ_FORECAST where SMI=?"
+	payload = (SMI)
+	result = dbselect(query, payload)
+	return result
+
 # return SMI's actual generation
 def get_SMI_generation(SMI):
 	query = "SELECT val from MONTH_GEN where SMI=? order by year, month"
@@ -188,13 +195,8 @@ output = str(last_date[2])+"."+str(last_date[1])+"."+str(last_date[0]) + ".xlsx"
 wb = load_workbook(output)
 if 'Perf Report' in wb.sheetnames:
 	ws = wb.get_sheet_by_name('Perf Report')
-	if 'Summary' in wb.sheetnames:
-		ws2 = wb.get_sheet_by_name('Summary')
-	else:
-		ws2 = wb.create_sheet('Summary')
 else:
 	ws = wb.create_sheet('Perf Report')
-	ws2 = wb.create_sheet('Summary')
 
 
 redFill = PatternFill(start_color='FA5858', end_color='FA5858', fill_type='solid')
@@ -210,6 +212,9 @@ ws_headings = ["SMI","Ref No","State","Installer","System Size","Export Control"
 				"Apr FC","May FC","Jun FC","Jul FC","Aug FC","Sep FC","Oct FC",
 				"Nov FC","Dec FC"]
 for date in dates:
+	date = "adj_fc(" + str(date).strip('()') + ")"
+	ws_headings.append(date)
+for date in dates:
 	date = "gen(" + str(date).strip('()') + ")"
 	ws_headings.append(date)
 ws_headings.extend(["Annual FC","Annual Gen","Annual Perf","Quarter FC","Quarter Gen",
@@ -220,6 +225,7 @@ ws_headings.extend(["Annual FC","Annual Gen","Annual Perf","Quarter FC","Quarter
 
 row_count = 1
 for SMI in SMIs:
+	print ("Formatting SMI: " + SMI[0])
 	col_count = 0
 	if row_count == 1:
 		for heading in ws_headings:
@@ -244,6 +250,12 @@ for SMI in SMIs:
 	ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 	for forecast in forecasts:
 		ws.cell(row=row_count+1, column=col_count+1).value = forecast[0]
+		col_count += 1
+
+	adj_forecasts = get_SMI_adj_forecast(SMI)
+	ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
+	for adj_forecast in adj_forecasts:
+		ws.cell(row=row_count+1, column=col_count+1).value = adj_forecast[0]
 		col_count += 1
 	
 	month_gen = get_SMI_generation(SMI)
@@ -371,3 +383,5 @@ for SMI in SMIs:
 	row_count += 1
 
 wb.save(output)
+
+print ("Complete!")

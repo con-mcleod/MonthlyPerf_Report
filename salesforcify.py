@@ -245,12 +245,12 @@ for row in range(1, num_rows):
 	PVsize = results["PVsize"]
 	if PVsize:
 		PVsize = float(PVsize)
-		if (10 < PVsize < 100):
-			site_type = "SME"
-		elif PVsize < 10:
-			site_type = "Resi"
-		elif PVsize > 100:
+		if (PVsize > 100):
 			site_type = "C&I"
+		elif (SMI[0] in ["A","B","C","D","E","F","G"]):
+			site_type = "SME"
+		elif (SMI[0] in ["W","X","Y","Z"]):
+			site_type = "Resi"
 	else:
 		site_type = ''
 	panel_brand = results["panel_brand"]
@@ -280,8 +280,14 @@ for row in range(1, num_rows):
 	tariff = results["tariff"]
 	if tariff:
 		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
-	if (SMI == "6203778594" or SMI=="6203779394"):
+	if (SMI == "6203778594" or SMI == "6203779394"):
 		tariff = 9
+	elif (SMI == "B162191181" or SMI == "B165791182" or SMI == "D170092557"):
+		tariff = 14
+	elif SMI == "C172991611":
+		tariff = 16.02
+	elif (SMI == "G161391137" or SMI == "G161391138"):
+		tariff = 19.63
 
 	for key, value in results.items():
 		if isinstance(key, int):
@@ -346,6 +352,8 @@ for SMI in SMIs:
 			cursor.execute("""INSERT OR IGNORE INTO adj_forecast(SMI, month, year, adj_val)
 			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
 
+		print ("Adjusting forecast for SMI: " + SMI[0])
+
 	else:
 		print (SMI[0], "does not have a supply date apparently so forecast remains the same")
 		for date in dates:
@@ -358,4 +366,4 @@ for SMI in SMIs:
 connection.commit()
 connection.close()
 
-
+print ("Complete!")

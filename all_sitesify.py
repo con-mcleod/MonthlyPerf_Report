@@ -180,6 +180,7 @@ for file in glob.glob(encompass_files):
 			else:
 				if SMI not in enc_SMIs:
 					enc_SMIs.append(SMI)
+					print ("Storing daily data for SMI: " + SMI)
 				if (SMI and (datatype=="kWh Generation" or datatype=="kWh Generation Generation"
 					or datatype=="kWh Generation B1")):
 					for i in range(row_count-1):
@@ -212,6 +213,7 @@ cursor = connection.cursor()
 SMIs = get_all_SMIs()
 dates = get_all_months()
 for SMI in SMIs:
+	print ("Collating monthly data for SMI: " + SMI[0])
 	for date in dates:
 		month_gen = get_month_gen(SMI, date)
 		cursor.execute("""INSERT OR IGNORE INTO MONTH_GEN(SMI, month, year, val)
@@ -219,3 +221,4 @@ for SMI in SMIs:
 connection.commit()
 connection.close()
 
+print ("Complete!")

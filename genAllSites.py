@@ -134,6 +134,8 @@ for SMI in SMIs:
 	ws.cell(row=row_count+1, column=1).value = SMI[0]
 	ws.cell(row=row_count+1, column=1).border = rightBorder
 
+	print("Formatting SMI: " + SMI[0])
+
 	for date in dates:
 		ws.cell(row=1, column=col_count+1).value = str(date[0]) + "," + str(date[1])
 		month_gen = get_month_gen(SMI[0], date)
@@ -147,3 +149,4 @@ for SMI in SMIs:
 
 wb.save(output)	
 
+print ("Complete!")
