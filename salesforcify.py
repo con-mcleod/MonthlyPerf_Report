@@ -7,65 +7,42 @@ import time
 
 ##############################
 #                            #
-# PROGRAM EXECUTION          #
-#                            #
-##############################
-
-if (len(sys.argv) != 2):
-	print ("Usage: python3 salesforcify.py <SF file>")
-	exit(1)
-
-SF_file = sys.argv[1]
-DATABASE = "dataset.db"
-output_day = str(datetime.now().day)
-output_month = str(datetime.now().month)
-output_year = str(datetime.now().year)
-output = output_year + "." + output_month + "." + output_day + ".xlsx"
-
-##############################
-#                            #
 # SQL DATABASE CREATION      #
 #                            #
 ##############################
 
-connection = sqlite3.connect(DATABASE)
-cursor = connection.cursor()
+def create_tables(cxn):
+	cursor = cxn.cursor()
 
-cursor.execute("DROP TABLE IF EXISTS SMI_DETAILS")
-cursor.execute("DROP TABLE IF EXISTS FORECAST")
-cursor.execute("DROP TABLE IF EXISTS ADJ_FORECAST")
+	cursor.execute("DROP TABLE IF EXISTS SMI_DETAILS")
+	cursor.execute("DROP TABLE IF EXISTS FORECAST")
+	cursor.execute("DROP TABLE IF EXISTS ADJ_FORECAST")
 
+	cursor.execute("""CREATE TABLE IF NOT EXISTS SMI_DETAILS(
+		SMI varchar(10),
+		ref_no varchar(40),
+		ECS varchar(150),
+		installer varchar(60),
+		PVsize float,
+		panel_brand varchar(100),
+		address varchar(150),
+		postcode int,
+		state varchar(10),
+		site_status varchar(80),
+		install_date date,
+		supply_date date,
+		tariff varchar(25),
+		export_control int check(export_control in (0,1)),
+		site_type varchar(8)
+		)""")
 
-cursor.execute("""CREATE TABLE IF NOT EXISTS SMI_DETAILS(
-	SMI varchar(10),
-	ref_no varchar(40),
-	ECS varchar(150),
-	installer varchar(60),
-	PVsize float,
-	panel_brand varchar(100),
-	address varchar(150),
-	postcode int,
-	state varchar(10),
-	site_status varchar(80),
-	install_date date,
-	supply_date date,
-	tariff varchar(25),
-	export_control int check(export_control in (0,1)),
-	site_type varchar(8)
-	)""")
+	cursor.execute("""CREATE TABLE IF NOT EXISTS FORECAST(
+		SMI varchar(10),
+		month int,
+		val float
+		)""")
 
-cursor.execute("""CREATE TABLE IF NOT EXISTS FORECAST(
-	SMI varchar(10),
-	month int,
-	val float
-	)""")
-
-cursor.execute("""CREATE TABLE IF NOT EXISTS ADJ_FORECAST(
-	SMI varchar(10),
-	month int,
-	year int,
-	adj_val float
-	)""")
+	cursor.close()
 
 ##############################
 #                            #
@@ -74,76 +51,31 @@ cursor.execute("""CREATE TABLE IF NOT EXISTS ADJ_FORECAST(
 ##############################
 
 # prepare sql query execution
-def dbselect(query, payload):
-	connection = sqlite3.connect(DATABASE)
-	cursorObj = connection.cursor()
+def dbselect(cxn, query, payload):
+	cursor = cxn.cursor()
 	if not payload:
-		rows = cursorObj.execute(query)
+		rows = cursor.execute(query)
 	else:
-		rows = cursorObj.execute(query,payload)
+		rows = cursor.execute(query,payload)
 	results = []
 	for row in rows:
 		results.append(row)
-	cursorObj.close()
+	cursor.close()
 	return results
 
 # execute sql query
-def dbexecute(query, payload):
-	connection = sqlite3.connect(DATABASE)
-	cursor = connection.cursor()
+def dbexecute(cxn, query, payload):
+	cursor = cxn.cursor()
 	if not payload:
 		cursor.execute(query)
 	else:
 		cursor.execute(query, payload)
-	connection.commit()
-	connection.close()
 
 ##############################
 #                            #
 # Helper functions           #
 #                            #
 ##############################
-
-# return all SMIs from encompass report
-def get_all_SMIs():
-	query = "SELECT distinct(SMI) from DAILY_GEN"
-	payload = None
-	all_SMIs = dbselect(query, payload)
-	return all_SMIs
-
-# return the range of dates from encompass report
-def get_all_months():
-	query = """SELECT obs_month, obs_year from DAILY_GEN 
-			group by obs_month, obs_year order by obs_year, obs_month"""
-	payload = None
-	all_dates = dbselect(query, payload)
-	return all_dates
-
-# get the supply start date of given SMI
-def get_supply_date(SMI):
-	query = "SELECT supply_date from SMI_DETAILS where SMI=?"
-	payload = (SMI)
-	result = dbselect(query, payload)
-	return result
-
-# get forecast value for given SMI
-def get_forecast(SMI, month):
-	query = "SELECT val from FORECAST where SMI=? and month=?"
-	payload = (SMI, month)
-	result = dbselect(query, payload)
-	return result
-
-# return number of days in given month and year
-def get_days_in_month(month, year):
-	if month in [1,3,5,7,8,10,12]:
-		return 31
-	elif month in [4,6,9,11]:
-		return 30
-	else:
-		if year in [16, 20, 24, 28]:
-			return 29
-		else:
-			return 28
 
 # assign headings to a specific column
 def cols_to_nums(headings):
@@ -206,164 +138,138 @@ def cols_to_nums(headings):
 		num += 1
 	return heading_nums
 
+def forecast_insert(cxn, SMI, key, value):
+	query = """INSERT OR IGNORE INTO forecast(SMI, month, val)
+				VALUES (?,?,?)"""
+	payload = (SMI, key, value)
+	dbexecute(cxn, query, payload)
+
+def smi_details_insert(cxn, SMI, ref_no, ECS, installer, PVsize, panel_brand, 
+					address, postcode, state, site_status, install_date, 
+					supply_date, tariff, export_control, site_type):
+	query = """INSERT OR IGNORE into SMI_DETAILS(SMI, ref_no, ECS, installer, 
+				PVsize, panel_brand, address, postcode, state, site_status, 
+				install_date, supply_date, tariff, export_control, site_type) 
+				VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+	payload = (SMI, ref_no, ECS, installer, PVsize, panel_brand, 
+					address, postcode, state, site_status, install_date, 
+					supply_date, tariff, export_control, site_type)
+	dbexecute(cxn, query, payload)
+	
+
 ##############################
 #                            #
 # READ IN SALESFORCE REPORT  #
 #                            #
 ##############################
 
-wb = open_workbook(SF_file)
-sheet = wb.sheet_by_index(0)
+if __name__ == '__main__':
 
-num_rows = sheet.nrows - 6
-num_cols = sheet.ncols
-headings = []
+	if (len(sys.argv) != 2):
+		print ("Usage: python3 salesforcify.py <SF file>")
+		exit(1)
 
-for row in range(0, 1):
-	for col in range(0, num_cols):
-		val = sheet.cell(row,col).value
-		headings.append(val)
+	SF_file = sys.argv[1]
+	DATABASE = "dataset.db"
 
-headings_dict = cols_to_nums(headings)
+	cxn = sqlite3.connect(DATABASE)
+	create_tables(cxn)
 
-for row in range(1, num_rows):
-	results = {}
-	for col in range(0, num_cols):
-		val = sheet.cell(row,col).value
-		# val = re.sub(r'\"', '', val)
 
-		for dkey, dval in headings_dict.items():
-			if col == dkey:
-				results[dval] = val
+	wb = open_workbook(SF_file)
+	sheet = wb.sheet_by_index(0)
 
-	SMI = results["SMI"]
-	if isinstance(SMI,str) == False:
-		SMI = str(SMI)[0:10]
-	ref_no = results["ref_no"]
-	ECS = results["ECS"]
-	installer = results["installer"]
-	PVsize = results["PVsize"]
-	if PVsize:
-		PVsize = float(PVsize)
-		if (PVsize > 100):
-			site_type = "C&I"
-		elif (SMI[0] in ["A","B","C","D","E","F","G"]):
-			site_type = "SME"
-		elif (SMI[0] in ["W","X","Y","Z"]):
-			site_type = "Resi"
-	else:
-		site_type = ''
-	panel_brand = results["panel_brand"]
-	address = results["address"]
-	state = results["state"]
-	if "postcode" in results:
-		postcode = results["postcode"]
-	else:
-		postcode = ""
-	site_status = results["site_status"]
-	install_date = results["install_date"]
-	if bool(install_date):
-		dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(install_date) - 2)
-		tt = dt.timetuple()
-		install_date = time.strftime('%Y.%m.%d', tt)
-	supply_date = results["supply_date"]
-	if bool(supply_date):
-		dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(supply_date) - 2)
-		tt = dt.timetuple()
-		supply_date = time.strftime('%Y.%m.%d', tt)
-	export_control = results["export_control"]
-	export_control = export_control.rstrip()
-	if export_control == "Yes":
-		export_control = 1
-	else:
-		export_control = 0
-	tariff = results["tariff"]
-	if tariff:
-		tariff = re.sub(r'[^0-9\.]','',tariff[5:])
-	if (SMI == "6203778594" or SMI == "6203779394"):
-		tariff = 9
-	elif (SMI == "B162191181" or SMI == "B165791182" or SMI == "D170092557"):
-		tariff = 14
-	elif SMI == "C172991611":
-		tariff = 16.02
-	elif (SMI == "G161391137" or SMI == "G161391138"):
-		tariff = 19.63
+	num_rows = sheet.nrows - 6
+	num_cols = sheet.ncols
+	headings = []
 
-	for key, value in results.items():
-		if isinstance(key, int):
-			# value = re.sub(r'[^0-9\.]','',value)
-			if value == "":
-				value = 0
-			value = float(value)
-			cursor.execute("""INSERT OR IGNORE INTO forecast(SMI, month, val)
-				VALUES (?,?,?)""", (SMI, key, value))
+	for row in range(0, 1):
+		for col in range(0, num_cols):
+			val = sheet.cell(row,col).value
+			headings.append(val)
 
-	cursor.execute("""INSERT OR IGNORE into SMI_DETAILS(SMI, ref_no, ECS, installer, 
-			PVsize, panel_brand, address, postcode, state, site_status, install_date, 
-			supply_date, tariff, export_control, site_type) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-			(SMI, ref_no, ECS, installer, PVsize, panel_brand, address, postcode, state, 
-				site_status, install_date, supply_date, tariff, export_control, site_type))
+	headings_dict = cols_to_nums(headings)
+	SMI_count = 0
 
-connection.commit()
-connection.close()
+	for row in range(1, num_rows):
+		results = {}
+		for col in range(0, num_cols):
+			val = sheet.cell(row,col).value
+			# val = re.sub(r'\"', '', val)
 
-##############################
-#                            #
-# Forecast to adjusted       #
-#                            #
-##############################
+			for dkey, dval in headings_dict.items():
+				if col == dkey:
+					results[dval] = val
 
-connection = sqlite3.connect(DATABASE)
-cursor = connection.cursor()
+		SMI = results["SMI"]
+		if isinstance(SMI,str) == False:
+			SMI = str(SMI)[0:10]
+		ref_no = results["ref_no"]
+		ECS = results["ECS"]
+		installer = results["installer"]
+		PVsize = results["PVsize"]
+		if PVsize:
+			PVsize = float(PVsize)
+			if (PVsize > 100):
+				site_type = "C&I"
+			elif (SMI[0] in ["A","B","C","D","E","F","G"]):
+				site_type = "SME"
+			elif (SMI[0] in ["W","X","Y","Z"]):
+				site_type = "Resi"
+		else:
+			site_type = ''
+		panel_brand = results["panel_brand"]
+		address = results["address"]
+		state = results["state"]
+		if "postcode" in results:
+			postcode = results["postcode"]
+		else:
+			postcode = ""
+		site_status = results["site_status"]
+		install_date = results["install_date"]
+		if bool(install_date):
+			dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(install_date) - 2)
+			tt = dt.timetuple()
+			install_date = time.strftime('%Y.%m.%d', tt)
+		supply_date = results["supply_date"]
+		if bool(supply_date):
+			dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + int(supply_date) - 2)
+			tt = dt.timetuple()
+			supply_date = time.strftime('%Y.%m.%d', tt)
+		export_control = results["export_control"]
+		export_control = export_control.rstrip()
+		if export_control == "Yes":
+			export_control = 1
+		else:
+			export_control = 0
+		tariff = results["tariff"]
+		if tariff:
+			tariff = re.sub(r'[^0-9\.]','',tariff[5:])
+		if (SMI == "6203778594" or SMI == "6203779394"):
+			tariff = 9
+		elif (SMI == "B162191181" or SMI == "B165791182" or SMI == "D170092557"):
+			tariff = 14
+		elif SMI == "C172991611":
+			tariff = 16.02
+		elif (SMI == "G161391137" or SMI == "G161391138"):
+			tariff = 19.63
 
-dates = get_all_months()
-SMIs = get_all_SMIs()
-
-for SMI in SMIs:
-	supply_date = get_supply_date(SMI)
-	if bool(supply_date) and supply_date[0][0] != '':
-		supply_year = int(supply_date[0][0][2:4])
-		supply_month = int(supply_date[0][0][5:7])
-		supply_day = int(supply_date[0][0][8:10])
-		for date in dates:
-			month = date[0]
-			year = date[1]
-			adj_forecast = get_forecast(SMI[0], month)[0][0]
-			if (SMI[0]=="6203778594" or SMI[0]=="6203779394"):
-				if date[1] == 16:
-					adj_forecast = 0.933*adj_forecast
-				elif date[1] == 17:
-					adj_forecast = 0.926*adj_forecast
-				elif date[1] == 18:
-					adj_forecast = 0.919*adj_forecast
+		for key, value in results.items():
+			if isinstance(key, int):
+				# value = re.sub(r'[^0-9\.]','',value)
+				if value == "":
+					value = 0
+				value = float(value)
+				forecast_insert(cxn, SMI, key, value)
 				
-			else:
-				if (year < supply_year):
-					adj_forecast = 0
-				elif (supply_year == year):
-					if (supply_month == month):
-						days_in_month = get_days_in_month(month, year)
-						adj_forecast = adj_forecast * (1-(supply_day/days_in_month))
-					elif (month < supply_month):
-						adj_forecast = 0
-					else:
-						adj_forecast = adj_forecast
-			
-			cursor.execute("""INSERT OR IGNORE INTO adj_forecast(SMI, month, year, adj_val)
-			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
+		print ("Collected SMI details for: " + SMI)
+		SMI_count += 1
 
-		print ("Adjusting forecast for SMI: " + SMI[0])
+		smi_details_insert(cxn, SMI, ref_no, ECS, installer, PVsize, panel_brand, address, postcode, state, 
+					site_status, install_date, supply_date, tariff, export_control, site_type)
 
-	else:
-		print (SMI[0], "does not have a supply date apparently so forecast remains the same")
-		for date in dates:
-			month = date[0]
-			year = date[1]
-			adj_forecast = get_forecast(SMI[0], month)[0][0]
-			cursor.execute("""INSERT OR IGNORE INTO adj_forecast(SMI, month, year, adj_val)
-			VALUES (?,?,?,?)""", (SMI[0], month, year, adj_forecast))
+	cxn.commit()
+	cxn.close()
 
-connection.commit()
-connection.close()
-
-print ("Complete!")
+	print ("Complete!")
+	print ("Collected details for " + str(SMI_count) + " unique SMIs")
