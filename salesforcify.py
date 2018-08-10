@@ -27,7 +27,6 @@ def create_tables(cxn):
 
 	cursor.execute("DROP TABLE IF EXISTS SMI_DETAILS")
 	cursor.execute("DROP TABLE IF EXISTS FORECAST")
-	cursor.execute("DROP TABLE IF EXISTS ADJ_FORECAST")
 
 	cursor.execute("""CREATE TABLE IF NOT EXISTS SMI_DETAILS(
 		SMI varchar(10),

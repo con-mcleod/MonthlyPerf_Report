@@ -23,6 +23,9 @@ def create_tables(cxn):
 
 	cursor = cxn.cursor()
 
+	cursor.execute("DROP TABLE IF EXISTS ADJ_FORECAST")
+	cursor.execute("DROP TABLE IF EXISTS MONTH_GEN")
+
 	cursor.execute("""CREATE TABLE IF NOT EXISTS ADJ_FORECAST(
 		SMI varchar(10),
 		month int,
@@ -264,7 +267,6 @@ if __name__ == '__main__':
 
 				adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
 
-				
 				# logic to adjust generation/forecast based on supply date
 				if (year < supply_year):
 					month_gen = [[0]]
@@ -286,11 +288,12 @@ if __name__ == '__main__':
 
 				# hardcoded solution for the solar farm sites
 				if (SMI[0]=="6203778594" or SMI[0]=="6203779394"):
-					if date[1] == 16:
+					adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
+					if year == 16:
 						adj_forecast = 0.933*adj_forecast
-					elif date[1] == 17:
+					elif year == 17:
 						adj_forecast = 0.926*adj_forecast
-					elif date[1] == 18:
+					elif year == 18:
 						adj_forecast = 0.919*adj_forecast
 
 				month_gen_insert(cxn, SMI[0], month, year, month_gen[0][0])

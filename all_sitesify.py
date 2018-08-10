@@ -25,6 +25,8 @@ def create_tables(cxn):
 
 	cursor = cxn.cursor()
 
+	cursor.execute("DROP TABLE IF EXISTS DAILY_GEN")
+
 	cursor.execute("""CREATE TABLE IF NOT EXISTS DAILY_GEN(
 		SMI varchar(10),
 		datatype varchar(30), 
