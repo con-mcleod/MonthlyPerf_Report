@@ -1,11 +1,13 @@
 #!/usr/bin/python3
 
+# Author: Connor McLeod
+# Contact: con.mcleod92@gmail.com
+# Source code: https://github.com/con-mcleod/MonthlyPerf_Report
+# Latest Update: 10 August 2018
+
 import sys, sqlite3, os
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Color, Font, PatternFill, Border, Side
-from datetime import datetime
-
-
 
 ##############################
 #                            #
@@ -13,8 +15,14 @@ from datetime import datetime
 #                            #
 ##############################
 
-# prepare sql query execution
 def dbselect(cxn, query, payload):
+	"""
+	Function to select data from an sqlite3 table
+	:param cxn: connection to the sqlite3 database
+	:param query: the query to be run
+	:param payload: the payload for any query parameters
+	:return results: the results of the search
+	"""
 	cursor = cxn.cursor()
 	if not payload:
 		rows = cursor.execute(query)
@@ -26,36 +34,43 @@ def dbselect(cxn, query, payload):
 	cursor.close()
 	return results
 
-# execute sql query
-def dbexecute(cxn, query, payload):
-	cursor = cxn.cursor()
-	if not payload:
-		cursor.execute(query)
-	else:
-		cursor.execute(query, payload)
-
 ##############################
 #                            #
 # Helper functions           #
 #                            #
 ##############################
 
-# return all SMIs from SF
 def get_all_SMIs(cxn):
-	query = "SELECT distinct(SMI) from MONTH_GEN"
+	"""
+	Function to grab all SMIs from the Encompass reports
+	:param cxn: connection to sqlite3 database
+	:return all_SMIs: list of all SMIs
+	"""
+	query = "SELECT distinct(SMI) from DAILY_GEN"
 	payload = None
 	all_SMIs = dbselect(cxn, query, payload)
 	return all_SMIs
 
-# return the range of dates from encompass report
+
 def get_all_months(cxn):
+	"""
+	Function to return all months included in the Encompass reports
+	:param cxn: connection to sqlite3 database
+	:return all_dates: list of all months in report [mm, yy]
+	"""
 	query = """SELECT obs_month, obs_year from DAILY_GEN 
 			group by obs_month, obs_year order by obs_year, obs_month"""
 	payload = None
 	all_dates = dbselect(cxn, query, payload)
 	return all_dates
 
+
 def get_last_date(cxn):
+	"""
+	Function to return the date of the last data entry from Encompass reports
+	:param cxn: connection to sqlite3 database
+	:return last_date: last date of Encompass reports
+	"""
 	query = """SELECT obs_day, obs_month, obs_year from DAILY_GEN
 			group by obs_day, obs_month, obs_year order by obs_year, obs_month, obs_day"""
 	payload = None
@@ -63,8 +78,14 @@ def get_last_date(cxn):
 	last_date = all_dates[-1]
 	return last_date
 
-# return SMI details from SF
+
 def get_SMI_details(cxn, SMI):
+	"""
+	Function to return an SMI's Salesforce details
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:return result: list of SMI's Salesforce details
+	"""
 	query = """SELECT ref_no, state, installer, PVsize, export_control,
 		panel_brand, site_type, site_status, supply_date, tariff from SMI_DETAILS where SMI=?"""
 	payload = (SMI)
@@ -74,22 +95,41 @@ def get_SMI_details(cxn, SMI):
 			result.append((''))
 	return result
 
-# return SMI's monthly forecasts
+
 def get_SMI_forecast(cxn, SMI):
+	"""
+	Function to return an SMI's forecast data
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:return result: list of forecast values
+	"""
 	query = "SELECT val from FORECAST where SMI=?"
 	payload = (SMI)
 	result = dbselect(cxn, query, payload)
 	return result
 
-# return SMI's monthly forecasts
+
+
 def get_SMI_adj_forecast(cxn, SMI):
+	"""
+	Function to return an SMI's adjusted forecast data
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:return result: list of adjusted forecast values
+	"""
 	query = "SELECT adj_val from ADJ_FORECAST where SMI=?"
 	payload = (SMI)
 	result = dbselect(cxn, query, payload)
 	return result
 
-# return SMI's actual generation
+
 def get_SMI_generation(cxn, SMI):
+	"""
+	Function to return an SMI's adjusted monthly generation
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:return result: list of SMI's adjusted monthly generation
+	"""
 	query = "SELECT val from MONTH_GEN where SMI=? order by year, month"
 	payload = (SMI)
 	result = dbselect(cxn, query, payload)
@@ -98,8 +138,17 @@ def get_SMI_generation(cxn, SMI):
 			result.append((0,))
 	return result
 
-# return SMI's annual forecast, generation and percentage
+
 def get_perf(cxn, SMI, period):
+	"""
+	Function to return an SMI's adjusted monthly generation
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:param period: the period of interest (annual, quarter, month, prev month)
+	:return fc: list of forecasts for each month in period
+	:return gen: list of generation values for each month in period
+	:return perf: list of generation/forecast as a % for each month in period
+	"""
 	fc = 0
 	gen = 0
 	query = "SELECT adj_val from ADJ_FORECAST where SMI=? order by year, month"
@@ -150,8 +199,15 @@ def get_perf(cxn, SMI, period):
 			perf = 0
 	return fc, gen, perf
 
-# return number of off days for month
+
 def get_off_days(cxn, SMI, dates):
+	"""
+	Function to return the number of days a site had zero generation in a given month
+	:param cxn: connection to sqlite3 database
+	:param SMI: the SMI of interest
+	:param dates: all dates given from Encompass files
+	:return off_days: number of days of zero generation in the current month for an SMI
+	"""
 	curr_date = dates[-1]
 	curr_month = curr_date[0]
 	curr_year = curr_date[1]
@@ -164,7 +220,7 @@ def get_off_days(cxn, SMI, dates):
 		for val in result:
 			if not val[0]:
 				off_days += 1
-			elif val[0] < .1:
+			elif val[0] < 0.1:
 				off_days += 1
 	return off_days
 
@@ -177,35 +233,37 @@ def get_off_days(cxn, SMI, dates):
 
 if __name__ == '__main__':
 
+	# terminate program if not executed correctly
 	if (len(sys.argv) != 1):
 		print ("Usage: python3 genMonthlyReport.py")
 		exit(1)
 
+	# connect to the sqlite3 database
 	DATABASE = "dataset.db"
-	output_day = str(datetime.now().day)
-	output_month = str(datetime.now().month)
-	output_year = str(datetime.now().year)
-
 	cxn = sqlite3.connect(DATABASE)
 
+	# name the output file using YY.MM.DD.xlsx format
 	last_date = get_last_date(cxn)
 	output = str(last_date[2])+"."+str(last_date[1])+"."+str(last_date[0]) + ".xlsx"
 
+	# open the output file because it should already exist from genAllSites.py
 	wb = load_workbook(output)
 	if 'Perf Report' in wb.sheetnames:
 		ws = wb.get_sheet_by_name('Perf Report')
 	else:
 		ws = wb.create_sheet('Perf Report')
 
-
+	# openpyxl cell formatting
 	redFill = PatternFill(start_color='FA5858', end_color='FA5858', fill_type='solid')
 	greenFill = PatternFill(start_color='9Afe2e', end_color='9Afe2e', fill_type='solid')
 	leftBorder = Border(left=Side(style='thin'))
 	rightBorder = Border(right=Side(style='thin'))
 
+	# grab column and row data types
 	SMIs = get_all_SMIs(cxn)
 	dates = get_all_months(cxn)
 
+	# create the headings
 	ws_headings = ["SMI","Ref No","State","Installer","System Size","Export Control",
 					"Panel Make","System Type","PPA Status","Supply Date","Tariff","Jan FC","Feb FC", "Mar FC",
 					"Apr FC","May FC","Jun FC","Jul FC","Aug FC","Sep FC","Oct FC",
@@ -222,10 +280,13 @@ if __name__ == '__main__':
 						"Quarter FC $","Quarter Gen $","Shortfall $","CurrMonth FC $","CurrMonth Gen $",
 						"Shortfall $","PrevMonth FC $","PrevMonth Gen $","Shortfall $"])
 
+	# loop through each SMI and add the data
 	row_count = 1
 	for SMI in SMIs:
 		print ("Formatting SMI: " + SMI[0])
 		col_count = 0
+
+		# print headings
 		if row_count == 1:
 			for heading in ws_headings:
 				ws.cell(row=row_count, column=col_count+1).value = heading
@@ -234,6 +295,7 @@ if __name__ == '__main__':
 		
 		ws.cell(row=row_count+1, column=1).value = SMI[0]
 		
+		# add Salesforce details
 		details = get_SMI_details(cxn, SMI)
 		if details:
 			if details[0]:
@@ -245,6 +307,7 @@ if __name__ == '__main__':
 					ws.cell(row=row_count+1, column=col_count+1).value = ''
 					col_count += 1
 		
+		# add Salesforce forecasts
 		forecasts = get_SMI_forecast(cxn, SMI)
 		ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 		for forecast in forecasts:
@@ -258,18 +321,21 @@ if __name__ == '__main__':
 			row_count += 1
 			continue
 
+		# add adjusted forecast based on supply date
 		adj_forecasts = get_SMI_adj_forecast(cxn, SMI)
 		ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 		for adj_forecast in adj_forecasts:
 			ws.cell(row=row_count+1, column=col_count+1).value = adj_forecast[0]
 			col_count += 1
 		
+		# add monthly generation from encompass
 		month_gen = get_SMI_generation(cxn, SMI)
 		ws.cell(row=row_count+1, column=col_count+1).border = leftBorder
 		for gen in month_gen:
 			ws.cell(row=row_count+1, column=col_count+1).value = gen[0]
 			col_count += 1
 		
+		# add annual performance columns
 		i = 0
 		annual_perf = get_perf(cxn, SMI, "Annual")
 		for val in annual_perf:
@@ -285,6 +351,7 @@ if __name__ == '__main__':
 			col_count += 1
 			i += 1
 
+		# add quarter performance columns
 		i = 0
 		quarter_perf = get_perf(cxn, SMI, "Quarter")
 		for val in quarter_perf:
@@ -300,6 +367,7 @@ if __name__ == '__main__':
 			col_count += 1
 			i += 1
 
+		# add monthly performance columns
 		i = 0
 		month_perf = get_perf(cxn, SMI, "Month")
 		for val in month_perf:
@@ -315,7 +383,7 @@ if __name__ == '__main__':
 			col_count += 1
 			i += 1
 
-		
+		# add last months performance columns
 		i = 0
 		last_month_perf = get_perf(cxn, SMI, "Prev")
 		for val in last_month_perf:
@@ -332,6 +400,7 @@ if __name__ == '__main__':
 			col_count += 1
 			i += 1
 		
+		# add number of off days
 		off_days = get_off_days(cxn, SMI, dates)
 		ws.cell(row=row_count+1, column=col_count+1).border = rightBorder
 		ws.cell(row=row_count+1, column=col_count+1).value = off_days
@@ -341,11 +410,13 @@ if __name__ == '__main__':
 
 		col_count += 1
 
+		# add tariff
 		tariff = None
 		if (details[0]):
 			if details[0][9]:
 				tariff = float(details[0][9])
-				
+		
+		# add revenue impact if tariff exists
 		if tariff:
 			revenues = []
 			for val in annual_perf[:2]:
@@ -388,6 +459,7 @@ if __name__ == '__main__':
 
 		row_count += 1
 
+	# save the excel file
 	wb.save(output)
 
 	print ("Complete!")

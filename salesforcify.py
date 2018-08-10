@@ -1,5 +1,10 @@
 #!/usr/bin/python3
 
+# Author: Connor McLeod
+# Contact: con.mcleod92@gmail.com
+# Source code: https://github.com/con-mcleod/MonthlyPerf_Report
+# Latest Update: 10 August 2018
+
 import sys, csv, sqlite3, os, glob, re
 from xlrd import open_workbook
 from datetime import datetime
@@ -12,6 +17,12 @@ import time
 ##############################
 
 def create_tables(cxn):
+	"""
+	Function to create tables in sqlite3
+	:param cxn: the connection to the sqlite3 database
+	:return:
+	"""
+
 	cursor = cxn.cursor()
 
 	cursor.execute("DROP TABLE IF EXISTS SMI_DETAILS")
@@ -50,8 +61,14 @@ def create_tables(cxn):
 #                            #
 ##############################
 
-# prepare sql query execution
 def dbselect(cxn, query, payload):
+	"""
+	Function to select data from an sqlite3 table
+	:param cxn: connection to the sqlite3 database
+	:param query: the query to be run
+	:param payload: the payload for any query parameters
+	:return results: the results of the search
+	"""
 	cursor = cxn.cursor()
 	if not payload:
 		rows = cursor.execute(query)
@@ -63,8 +80,14 @@ def dbselect(cxn, query, payload):
 	cursor.close()
 	return results
 
-# execute sql query
 def dbexecute(cxn, query, payload):
+	"""
+	Function to execute an sqlite3 table insertion
+	:param cxn: connection to the sqlite3 database
+	:param query: the query to be run
+	:param payload: the payload for any query parameters
+	:return:
+	"""
 	cursor = cxn.cursor()
 	if not payload:
 		cursor.execute(query)
@@ -77,8 +100,14 @@ def dbexecute(cxn, query, payload):
 #                            #
 ##############################
 
-# assign headings to a specific column
 def cols_to_nums(headings):
+	"""
+	Function to find the relevant heading and assign it to a variable
+	This function makes it so that the if the Salesforce report changes in structure
+	the report will still continue to work
+	:param headings: the Salesforce report headings
+	:return headings_nums: a dictionary which has an ordered list of required headings
+	"""
 	heading_nums = {}
 	num = 0
 	for heading in headings:
@@ -138,15 +167,45 @@ def cols_to_nums(headings):
 		num += 1
 	return heading_nums
 
-def forecast_insert(cxn, SMI, key, value):
+
+def forecast_insert(cxn, SMI, month, value):
+	"""
+	Function to insert data into the sqlite forecast table
+	:param cxn: the connection to the sqlite3 database
+	:param SMI: the given SMI
+	:param month: the given month
+	:param value: the forecast value for that SMI and month from Salesforce report 
+	:return:
+	"""
 	query = """INSERT OR IGNORE INTO forecast(SMI, month, val)
 				VALUES (?,?,?)"""
-	payload = (SMI, key, value)
+	payload = (SMI, month, value)
 	dbexecute(cxn, query, payload)
+
 
 def smi_details_insert(cxn, SMI, ref_no, ECS, installer, PVsize, panel_brand, 
 					address, postcode, state, site_status, install_date, 
 					supply_date, tariff, export_control, site_type):
+	"""
+	Function to insert data into the sqlite smi_details table
+	:param cxn: the connection to the sqlite3 database
+	:param SMI: SMI from SF report
+	:param ref_no: reference number from SF report
+	:param ECS: ECS order number from SF report
+	:param installer: installer from SF report
+	:param PVsize: PV system size from SF report
+	:param panel_brand: panel make from SF report
+	:param address:	address from SF report
+	:param postcode: postcode from SF report
+	:param state: state from SF report
+	:param site_status: status of site from SF report
+	:param install_date: install date from SF report
+	:param supply_date: supply date from SF report
+	:param tariff: tariff as an integer from SF report
+	:param export_control: export control boolean from SF report
+	:param site_type: type of site (Resi, SME, C&I) from SF report
+	:return:
+	"""
 	query = """INSERT OR IGNORE into SMI_DETAILS(SMI, ref_no, ECS, installer, 
 				PVsize, panel_brand, address, postcode, state, site_status, 
 				install_date, supply_date, tariff, export_control, site_type) 
@@ -165,20 +224,22 @@ def smi_details_insert(cxn, SMI, ref_no, ECS, installer, PVsize, panel_brand,
 
 if __name__ == '__main__':
 
+	# terminate program if not executed correctly
 	if (len(sys.argv) != 2):
 		print ("Usage: python3 salesforcify.py <SF file>")
 		exit(1)
 
-	SF_file = sys.argv[1]
+	# connect to the database and create the tables
 	DATABASE = "dataset.db"
-
 	cxn = sqlite3.connect(DATABASE)
 	create_tables(cxn)
 
-
+	# read from Salesforce excel file using xlrd package
+	SF_file = sys.argv[1]
 	wb = open_workbook(SF_file)
 	sheet = wb.sheet_by_index(0)
 
+	# reads in the excel headings and allocates them to variables regardless of excel file order
 	num_rows = sheet.nrows - 6
 	num_cols = sheet.ncols
 	headings = []
@@ -188,9 +249,11 @@ if __name__ == '__main__':
 			val = sheet.cell(row,col).value
 			headings.append(val)
 
+	# function to assign headers to specific variables
 	headings_dict = cols_to_nums(headings)
 	SMI_count = 0
 
+	# for each SMI grab the relevant data and store it into the sqlite tables
 	for row in range(1, num_rows):
 		results = {}
 		for col in range(0, num_cols):
@@ -245,6 +308,8 @@ if __name__ == '__main__':
 		tariff = results["tariff"]
 		if tariff:
 			tariff = re.sub(r'[^0-9\.]','',tariff[5:])
+
+		# hardcoded tariffs for specific sites that aren't populated in Salesforce
 		if (SMI == "6203778594" or SMI == "6203779394"):
 			tariff = 9
 		elif (SMI == "B162191181" or SMI == "B165791182" or SMI == "D170092557"):
@@ -254,6 +319,8 @@ if __name__ == '__main__':
 		elif (SMI == "G161391137" or SMI == "G161391138"):
 			tariff = 19.63
 
+		# insert into the forecast table the forecast values for the given SMI
+		# key = month
 		for key, value in results.items():
 			if isinstance(key, int):
 				# value = re.sub(r'[^0-9\.]','',value)
@@ -265,6 +332,7 @@ if __name__ == '__main__':
 		print ("Collected SMI details for: " + SMI)
 		SMI_count += 1
 
+		# inesrt into the smi_details table the details for given smi
 		smi_details_insert(cxn, SMI, ref_no, ECS, installer, PVsize, panel_brand, address, postcode, state, 
 					site_status, install_date, supply_date, tariff, export_control, site_type)
 
