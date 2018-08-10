@@ -264,6 +264,26 @@ if __name__ == '__main__':
 
 				adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
 
+				
+				# logic to adjust generation/forecast based on supply date
+				if (year < supply_year):
+					month_gen = [[0]]
+					adj_forecast = 0
+				elif (supply_year == year):
+					if (month == supply_month):
+						month_gen = get_adj_month_gen(cxn, SMI, date, supply_day)
+						days_in_month = get_days_in_month(month, year)
+						adj_forecast = adj_forecast * (1-(supply_day/days_in_month))
+					elif (month < supply_month):
+						month_gen = [[0]]
+						adj_forecast = 0
+					else:
+						month_gen = create_month_gen(cxn, SMI, date)
+						adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
+				else:
+					month_gen = create_month_gen(cxn, SMI, date)
+					adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
+
 				# hardcoded solution for the solar farm sites
 				if (SMI[0]=="6203778594" or SMI[0]=="6203779394"):
 					if date[1] == 16:
@@ -272,27 +292,6 @@ if __name__ == '__main__':
 						adj_forecast = 0.926*adj_forecast
 					elif date[1] == 18:
 						adj_forecast = 0.919*adj_forecast
-				
-				# logic to adjust generation/forecast based on supply date
-				else:
-
-					if (year < supply_year):
-						month_gen = [[0]]
-						adj_forecast = 0
-					elif (supply_year == year):
-						if (month == supply_month):
-							month_gen = get_adj_month_gen(cxn, SMI, date, supply_day)
-							days_in_month = get_days_in_month(month, year)
-							adj_forecast = adj_forecast * (1-(supply_day/days_in_month))
-						elif (month < supply_month):
-							month_gen = [[0]]
-							adj_forecast = 0
-						else:
-							month_gen = create_month_gen(cxn, SMI, date)
-							adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
-					else:
-						month_gen = create_month_gen(cxn, SMI, date)
-						adj_forecast = get_forecast(cxn, SMI[0], month)[0][0]
 
 				month_gen_insert(cxn, SMI[0], month, year, month_gen[0][0])
 				adj_forecast_insert(cxn, SMI[0], month, year, adj_forecast)
